@@ -14,7 +14,7 @@ const db = mysql.createConnection({
   user: "root",
   password: "DrfMLhQyZIkTXGDPRCynqzmSSjIjcgyX",
   database: "railway",
-  port: 12659
+  port: 3306
 });
 
 db.connect((err) => {
