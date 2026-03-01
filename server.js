@@ -12,7 +12,9 @@ const app = express();
 console.log("OpenAI Key Loaded:", process.env.OPENAI_API_KEY ? "YES" : "NO");
 
 // ================== MIDDLEWARE ==================
-app.use(cors());
+app.use(cors({
+  origin: "https://gamehub-frontend-a9ma.onrender.com"
+}));
 app.use(express.json());
 
 const limiter = rateLimit({
