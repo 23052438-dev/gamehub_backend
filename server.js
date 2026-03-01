@@ -14,6 +14,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(limiter);
+app.listen(PORT, () => {
+    console.log("Server running");
+});
 
 const db = mysql.createConnection({
   host: "metro.proxy.rlwy.net",
@@ -41,42 +45,57 @@ app.post("/api/recommend", async (req, res) => {
   try {
     const { userMessage } = req.body;
 
-    db.query("SELECT * FROM games", async (err, results) => {
+    if (!userMessage) {
+      return res.status(400).json({ error: "User message required" });
+    }
+
+    db.query("SELECT name, genre, price FROM games", async (err, results) => {
       if (err) {
+        console.error("DB error:", err);
         return res.status(500).json({ error: "Database error" });
       }
 
+      if (results.length === 0) {
+        return res.json({ reply: "No games available currently." });
+      }
+
       const gameList = results.map(game =>
-        `${game.name} - Genre: ${game.genre} - Price: ${game.price}`
+        `${game.name} (Genre: ${game.genre}, Price: ₹${game.price})`
       ).join("\n");
 
-      const aiResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a GameHub recommendation assistant. Only recommend games from the provided list."
-          },
-          {
-            role: "user",
-            content: `User preference: ${userMessage}
+      try {
+        const aiResponse = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: "You are a GameHub AI assistant. Recommend games ONLY from the given list."
+            },
+            {
+              role: "user",
+              content: `User preference: ${userMessage}
 
-Available games:
+Available Games:
 ${gameList}`
-          }
-        ],
-        max_tokens: 200,
-        temperature: 0.7
-      });
+            }
+          ],
+          max_tokens: 200,
+          temperature: 0.7
+        });
 
-      res.json({
-        reply: aiResponse.choices[0].message.content
-      });
+        res.json({
+          reply: aiResponse.choices[0].message.content
+        });
+
+      } catch (aiError) {
+        console.error("OpenAI error:", aiError);
+        res.status(500).json({ error: "AI processing failed" });
+      }
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "AI error" });
+    console.error("Server error:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -106,6 +125,9 @@ app.post("/api/support", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-    console.log("Server running");
+const rateLimit = require("express-rate-limit");
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100
 });
