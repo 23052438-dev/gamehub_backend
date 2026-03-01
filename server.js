@@ -37,6 +37,35 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
+app.post("/api/recommend", async (req, res) => {
+  try {
+    const { userMessage } = req.body;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a GameHub recommendation assistant."
+        },
+        {
+          role: "user",
+          content: userMessage
+        }
+      ],
+      max_tokens: 200
+    });
+
+    res.json({
+      reply: response.choices[0].message.content
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "OpenAI failed" });
+  }
+});
+
 app.listen(PORT, () => {
     console.log("Server running");
 });
