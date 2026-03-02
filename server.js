@@ -215,6 +215,17 @@ app.post("/api/support", async (req, res) => {
   }
 });
 
+// ===== TEST DB CONNECTION =====
+app.get("/test-db", (req, res) => {
+  db.query("SELECT 1", (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: "DB Connected Successfully" });
+  });
+});
+
+// ===== START SERVER =====
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
