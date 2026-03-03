@@ -13,6 +13,7 @@ const app = express();
 // ================== MIDDLEWARE ==================
 app.use(cors({
   origin: [
+    "https://gamehub-frontend-3.onrender.com",
     "https://gamehub-frontend-a9ma.onrender.com",
     "http://localhost:3000"
   ],
