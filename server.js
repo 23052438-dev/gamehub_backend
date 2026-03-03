@@ -215,7 +215,7 @@ app.post("/api/support", async (req, res) => {
   }
 });
 
-// ===== TEST DB CONNECTION =====
+// -------- TEST DB ROUTE --------
 app.get("/test-db", (req, res) => {
   db.query("SELECT 1", (err, result) => {
     if (err) {
@@ -225,7 +225,7 @@ app.get("/test-db", (req, res) => {
   });
 });
 
-// ===== START SERVER =====
+// -------- START SERVER --------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
