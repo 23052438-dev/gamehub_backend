@@ -167,21 +167,21 @@ app.post("/api/recommend", async (req, res) => {
     try {
       const aiResponse = await openai.chat.completions.create({
         model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a GameHub AI assistant. Recommend games ONLY from the provided list. 
-Explain briefly why the game matches the user's preference. 
-Mention price if relevant."
-          },
-          {
-            role: "user",
-            content: `User preference: ${userMessage}
+       messages: [
+  {
+    role: "system",
+    content: `You are a GameHub AI assistant. Recommend games ONLY from the provided list.
+Explain briefly why the game matches the user's preference.
+Mention price if relevant.`
+  },
+  {
+    role: "user",
+    content: `User preference: ${userMessage}
 
 Available Games:
 ${gameList}`
-          }
-        ],
+  }
+  ],
         max_tokens: 200,
         temperature: 0.7
       });
