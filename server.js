@@ -154,48 +154,42 @@ app.post("/api/recommend", async (req, res) => {
 
   const { userMessage } = req.body;
 
-  db.query("SELECT name, genre, price FROM games", async (err, results) => {
+  const gameList = `
+GTA V (Genre: Open World Action, Price: ₹1999)
+The Witcher 3 (Genre: RPG Story Adventure, Price: ₹1499)
+Minecraft (Genre: Sandbox Creative, Price: ₹999)
+`;
 
-    if (err) return res.status(500).json({ error: "Database error" });
-    if (results.length === 0)
-      return res.json({ reply: "No games available currently." });
+  try {
 
-    const gameList = results.map(game =>
-      `${game.name} (Genre: ${game.genre}, Price: ₹${game.price})`
-    ).join("\n");
-
-    try {
-      const aiResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-       messages: [
-  {
-    role: "system",
-    content: `You are a GameHub AI assistant. Recommend games ONLY from the provided list.
-Explain briefly why the game matches the user's preference.
-Mention price if relevant.`
-  },
-  {
-    role: "user",
-    content: `User preference: ${userMessage}
+    const aiResponse = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a GameHub AI assistant. Recommend ONE game from the list based on user preference."
+        },
+        {
+          role: "user",
+          content: `User preference: ${userMessage}
 
 Available Games:
 ${gameList}`
+        }
+      ],
+      max_tokens: 150
+    });
+
+    res.json({
+      reply: aiResponse.choices[0].message.content
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "AI failed" });
   }
-  ],
-        max_tokens: 200,
-        temperature: 0.7
-      });
 
-      res.json({
-        reply: aiResponse.choices[0].message.content
-      });
-
-    } catch {
-      res.status(500).json({ error: "AI processing failed" });
-    }
-  });
 });
-
 // -------- SUPPORT --------
 app.post("/api/support", async (req, res) => {
 
