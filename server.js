@@ -170,7 +170,9 @@ app.post("/api/recommend", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: "You are a GameHub AI assistant. Recommend games ONLY from the given list."
+            content: "You are a GameHub AI assistant. Recommend games ONLY from the provided list. 
+Explain briefly why the game matches the user's preference. 
+Mention price if relevant."
           },
           {
             role: "user",
