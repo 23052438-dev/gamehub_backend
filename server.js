@@ -46,7 +46,7 @@ const db = mysql.createPool({
 
 // ================== OPENAI ==================
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 // ================== AUTH MIDDLEWARE ==================
@@ -151,6 +151,7 @@ app.get("/api/profile", authenticateToken, (req, res) => {
 
 // -------- RECOMMEND --------
 app.post("/api/recommend", async (req, res) => {
+
   const { userMessage } = req.body;
 
   const gameList = `
@@ -160,6 +161,7 @@ Minecraft (Genre: Sandbox Creative, Price: ₹999)
 `;
 
   try {
+
     const aiResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -183,9 +185,10 @@ ${gameList}`
     });
 
   } catch (error) {
-    console.log("ERROR:", error);
+    console.log(error);
     res.status(500).json({ error: "AI failed" });
   }
+
 });
 // -------- SUPPORT --------
 app.post("/api/support", async (req, res) => {
