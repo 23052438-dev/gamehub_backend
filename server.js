@@ -150,7 +150,43 @@ app.get("/api/profile", authenticateToken, (req, res) => {
 });
 
 // -------- RECOMMEND --------
+app.post("/api/recommend", async (req, res) => {
+  const { userMessage } = req.body;
 
+  const gameList = `
+GTA V (Genre: Open World Action, Price: ₹1999)
+The Witcher 3 (Genre: RPG Story Adventure, Price: ₹1499)
+Minecraft (Genre: Sandbox Creative, Price: ₹999)
+`;
+
+  try {
+    const aiResponse = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a GameHub AI assistant. Recommend ONE game from the list based on user preference."
+        },
+        {
+          role: "user",
+          content: `User preference: ${userMessage}
+
+Available Games:
+${gameList}`
+        }
+      ],
+      max_tokens: 150
+    });
+
+    res.json({
+      reply: aiResponse.choices[0].message.content
+    });
+
+  } catch (error) {
+    console.log("ERROR:", error);
+    res.status(500).json({ error: "AI failed" });
+  }
+});
 // -------- SUPPORT --------
 app.post("/api/support", async (req, res) => {
 
