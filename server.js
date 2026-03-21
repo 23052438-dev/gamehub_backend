@@ -44,9 +44,10 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-// ================== OPENAI ==================
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const Groq = require("groq-sdk");
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
 });
 
 // ================== AUTH MIDDLEWARE ==================
@@ -149,21 +150,21 @@ app.get("/api/profile", authenticateToken, (req, res) => {
   );
 });
 
-// -------- RECOMMEND --------
 app.post("/api/recommend", async (req, res) => {
 
   const { userMessage } = req.body;
 
   const gameList = `
 GTA V (Genre: Open World Action, Price: ₹1999)
-The Witcher 3 (Genre: RPG Story Adventure, Price: ₹1499)
+The Witcher 3 (Genre: RPG Adventure, Price: ₹1499)
 Minecraft (Genre: Sandbox Creative, Price: ₹999)
 `;
 
   try {
 
-    const aiResponse = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const chatCompletion = await groq.chat.completions.create({
+      model: "llama3-8b-8192",
+
       messages: [
         {
           role: "system",
@@ -177,41 +178,58 @@ Available Games:
 ${gameList}`
         }
       ],
+
+      temperature: 0.7,
       max_tokens: 150
     });
 
     res.json({
-      reply: aiResponse.choices[0].message.content
+      reply: chatCompletion.choices[0].message.content
     });
 
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "AI failed" });
+
+    console.log("LLAMA ERROR:", error);
+
+    res.status(500).json({
+      error: "LLaMA AI failed"
+    });
+
   }
 
 });
-// -------- SUPPORT --------
 app.post("/api/support", async (req, res) => {
 
   const { message } = req.body;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+
+    const response = await groq.chat.completions.create({
+      model: "llama3-8b-8192",
+
       messages: [
         { role: "system", content: "You are GameHub support assistant." },
         { role: "user", content: message }
       ],
-      max_tokens: 250
+
+      max_tokens: 200
     });
 
-    res.json({ reply: response.choices[0].message.content });
+    res.json({
+      reply: response.choices[0].message.content
+    });
 
-  } catch {
-    res.status(500).json({ error: "Support AI failed" });
+  } catch (error) {
+
+    console.log("SUPPORT ERROR:", error);
+
+    res.status(500).json({
+      error: "Support AI failed"
+    });
+
   }
-});
 
+});
 // -------- TEST DB ROUTE --------
 app.get("/test-db", (req, res) => {
   db.query("SELECT 1", (err, result) => {
