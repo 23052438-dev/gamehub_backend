@@ -42,6 +42,23 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
+// ================== CREATE TABLE IF NOT EXISTS ==================
+db.query(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    phone VARCHAR(20),
+    password VARCHAR(255) NOT NULL
+  )
+`, (err) => {
+  if (err) {
+    console.error("Table creation failed:", err.message);
+  } else {
+    console.log("Users table ready.");
+  }
+});
+
 // ================== GROQ AI ==================
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
