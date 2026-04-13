@@ -44,11 +44,6 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-const Groq = require("groq-sdk");
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-});
 
 // ================== AUTH MIDDLEWARE ==================
 function authenticateToken(req, res, next) {
