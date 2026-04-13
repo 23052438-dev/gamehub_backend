@@ -4,9 +4,9 @@ const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
+const OpenAI = require("openai");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const Groq = require("groq-sdk");
 
 const app = express();
 
@@ -17,7 +17,7 @@ app.use(cors({
     "https://gamehub-frontend-a9ma.onrender.com",
     "http://localhost:3000"
   ],
-  methods: ["GET", "POST", "DELETE"],
+  methods: ["GET", "POST"],
   credentials: true
 }));
 
@@ -29,43 +29,30 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// ================== DATABASE ==================
+// ================== DATABASE POOL ==================
 const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
-  ssl: { rejectUnauthorized: false },
+  ssl: {
+    rejectUnauthorized: false
+  },
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
-// ================== CREATE TABLE IF NOT EXISTS ==================
-db.query(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    phone VARCHAR(20),
-    password VARCHAR(255) NOT NULL
-  )
-`, (err) => {
-  if (err) {
-    console.error("Table creation failed:", err.message);
-  } else {
-    console.log("Users table ready.");
-  }
-});
+const Groq = require("groq-sdk");
 
-// ================== GROQ AI ==================
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
 // ================== AUTH MIDDLEWARE ==================
 function authenticateToken(req, res, next) {
+
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
@@ -79,14 +66,13 @@ function authenticateToken(req, res, next) {
 }
 
 // ================== ROUTES ==================
-
-// Root
 app.get("/", (req, res) => {
   res.send("GameHub Backend Running");
 });
 
 // -------- REGISTER --------
 app.post("/api/register", async (req, res) => {
+
   const { name, email, phone, password } = req.body;
 
   if (!name || !email || !password) {
@@ -109,24 +95,28 @@ app.post("/api/register", async (req, res) => {
         res.json({ message: "User registered successfully" });
       }
     );
-  } catch {
+
+  } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
 });
 
 // -------- LOGIN --------
 app.post("/api/login", (req, res) => {
+
   const { email, password } = req.body;
 
   db.query(
     "SELECT * FROM users WHERE email = ?",
     [email],
     async (err, results) => {
+
       if (err) return res.status(500).json({ error: "Database error" });
       if (results.length === 0)
         return res.status(400).json({ error: "Invalid email or password" });
 
       const user = results[0];
+
       const validPassword = await bcrypt.compare(password, user.password);
 
       if (!validPassword)
@@ -143,12 +133,14 @@ app.post("/api/login", (req, res) => {
   );
 });
 
-// -------- PROFILE --------
+// -------- PROFILE (Protected) --------
 app.get("/api/profile", authenticateToken, (req, res) => {
+
   db.query(
     "SELECT name, email, phone FROM users WHERE id = ?",
     [req.user.id],
     (err, results) => {
+
       if (err) return res.status(500).json({ error: "Database error" });
       if (results.length === 0)
         return res.status(404).json({ error: "User not found" });
@@ -158,8 +150,8 @@ app.get("/api/profile", authenticateToken, (req, res) => {
   );
 });
 
-// -------- GAME RECOMMENDATION --------
 app.post("/api/recommend", async (req, res) => {
+
   const { userMessage } = req.body;
 
   const gameList = `
@@ -169,8 +161,10 @@ Minecraft (Genre: Sandbox Creative, Price: ₹999)
 `;
 
   try {
+
     const chatCompletion = await groq.chat.completions.create({
       model: "llama3-8b-8192",
+
       messages: [
         {
           role: "system",
@@ -184,6 +178,7 @@ Available Games:
 ${gameList}`
         }
       ],
+
       temperature: 0.7,
       max_tokens: 150
     });
@@ -191,72 +186,56 @@ ${gameList}`
     res.json({
       reply: chatCompletion.choices[0].message.content
     });
-  } catch (error) {
-    console.log("LLAMA ERROR:", error);
-    res.status(500).json({ error: "LLaMA AI failed" });
-  }
-});
 
-// -------- SUPPORT AI --------
+  } catch (error) {
+
+    console.log("LLAMA ERROR:", error);
+
+    res.status(500).json({
+      error: "LLaMA AI failed"
+    });
+
+  }
+
+});
 app.post("/api/support", async (req, res) => {
+
   const { message } = req.body;
 
   try {
+
     const response = await groq.chat.completions.create({
       model: "llama3-8b-8192",
+
       messages: [
         { role: "system", content: "You are GameHub support assistant." },
         { role: "user", content: message }
       ],
+
       max_tokens: 200
     });
 
     res.json({
       reply: response.choices[0].message.content
     });
+
   } catch (error) {
+
     console.log("SUPPORT ERROR:", error);
-    res.status(500).json({ error: "Support AI failed" });
-  }
-});
 
-// -------- CHATBOT (GX AI) --------
-app.post("/api/chat", async (req, res) => {
-  const { messages } = req.body;
-
-  try {
-    const response = await groq.chat.completions.create({
-      model: "llama3-8b-8192",
-      messages: [
-        {
-          role: "system",
-          content: "You are GX, Game Hub's AI. Help users with game recommendations, specs, reviews, and pricing. Keep answers concise."
-        },
-        ...messages
-      ],
-      max_tokens: 300
+    res.status(500).json({
+      error: "Support AI failed"
     });
 
-    res.json({
-      reply: response.choices[0].message.content
-    });
-  } catch (err) {
-    res.status(500).json({ error: "AI unavailable" });
   }
-});
 
-// -------- DELETE ACCOUNT --------
-app.delete("/api/delete", authenticateToken, (req, res) => {
-  db.query("DELETE FROM users WHERE id = ?", [req.user.id], (err) => {
-    if (err) return res.status(500).json({ error: "Could not delete account" });
-    res.json({ message: "Account deleted" });
-  });
 });
-
-// -------- TEST DB --------
+// -------- TEST DB ROUTE --------
 app.get("/test-db", (req, res) => {
-  db.query("SELECT 1", (err) => {
-    if (err) return res.status(500).json({ error: err.message });
+  db.query("SELECT 1", (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
     res.json({ message: "DB Connected Successfully" });
   });
 });
